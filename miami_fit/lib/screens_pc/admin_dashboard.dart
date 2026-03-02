@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:miami_fit/screens_pc/view_articulos.dart';
+import 'package:miami_fit/screens_pc/view_clientes.dart';
+import 'package:miami_fit/screens_pc/view_planes.dart';
+import 'package:miami_fit/screens_pc/view_register.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -30,7 +34,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut, // Animación más fluida
                 width: isCollapsed ? 0 : 280,
-                color: const Color(0xFF0A1A39),
+                color: const Color.fromARGB(255, 24, 52, 109),
               // El secreto está en este ClipRect y el SingleChildScrollView
               child: ClipRect( 
                 child: OverflowBox(
@@ -128,6 +132,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         _menuOption(0, Icons.people, "Clientes"),
         _menuOption(1, Icons.person_add, "Registrar Cliente"),
         _menuOption(2, Icons.list_alt, "Planes"),
+        _menuOption(3, Icons.shopping_bag, "Artículos")
       ],
     );
   }
@@ -145,9 +150,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
   // Lógica para cambiar lo que se ve a la derecha
   Widget _buildMainContent() {
     switch (selectedIndex) {
-      case 0: return const Center(child: Text("Aquí irá la Lista de Clientes (Excel)", style: TextStyle(fontSize: 24)));
-      case 1: return const Center(child: Text("Formulario de Registro", style: TextStyle(fontSize: 24)));
-      case 2: return const Center(child: Text("Gestión de Planes", style: TextStyle(fontSize: 24)));
+      case 0: return const ViewClientes();
+      case 1: return const ViewRegistrar();
+      case 2: return const ViewPlanes();
+      case 3: return const ViewArticulos();
       default: return Container();
     }
   }

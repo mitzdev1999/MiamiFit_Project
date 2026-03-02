@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:miami_fit/screens_mobile/login_mobile.dart';
 import 'package:miami_fit/screens_pc/login_screens.dart';
 
 void main() {
@@ -17,7 +18,7 @@ class MiamiFitApp extends StatelessWidget {
         brightness: Brightness.dark,
         primaryColor: const Color(0xFF00AEEF),
       ),
-      home: const LoginScreen(),
+      home: const LoginMobile(),
     );
   }
 }
