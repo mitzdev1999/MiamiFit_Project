@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:miami_fit/screens_mobile/tienda_mobile.dart';
 
 class ClientDashboard extends StatelessWidget {
   const ClientDashboard({super.key});
@@ -52,9 +53,12 @@ class ClientDashboard extends StatelessWidget {
             padding: const EdgeInsets.all(30.0),
             child: GestureDetector(
               onTap: () {
-                // Navegar a la vista de tienda móvil que haremos a continuación
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => TiendaMobile())
+                );
               },
-              child: Container(
+              child: Container( 
                 height: 100,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: [miamiCyan, Colors.blue.shade900]),
