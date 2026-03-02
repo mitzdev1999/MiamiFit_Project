@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:miami_fit/screens_pc/admin_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -46,8 +47,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: 55,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Por ahora, navegación de prueba al dashboard
-                    print("Accediendo...");
+                    Navigator.pushReplacement(
+                      context, 
+                      MaterialPageRoute(builder: (context) => const AdminDashboard())
+                    );
+                    
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: miamiFitCyan,

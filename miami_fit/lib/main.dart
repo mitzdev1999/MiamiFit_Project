@@ -8,7 +8,7 @@ void main() {
 class MiamiFitApp extends StatelessWidget {
   const MiamiFitApp({super.key});
 
-  @override
+  @override 
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Miami Fit Admin',
