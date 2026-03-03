@@ -19,13 +19,18 @@ class _TiendaMobileState extends State<TiendaMobile> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text("TIENDA MIAMI FIT", 
-          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          "TIENDA MIAMI FIT",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        // Escuchamos la colección 'productos' (asegúrate de que se llame así en tu PC)
-        stream: FirebaseFirestore.instance.collection('productos').snapshots(),
+        stream: FirebaseFirestore.instance.collection('articulos').snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -33,26 +38,25 @@ class _TiendaMobileState extends State<TiendaMobile> {
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Center(
-              child: Text("No hay productos disponibles aún", 
+              child: Text("No hay artículos en stock", 
                 style: TextStyle(color: Colors.white54)),
             );
           }
 
-          final productos = snapshot.data!.docs;
+          final articulos = snapshot.data!.docs;
 
           return GridView.builder(
             padding: const EdgeInsets.all(20),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, // Dos columnas
-              childAspectRatio: 0.75, // Proporción de la tarjeta
+              crossAxisCount: 2, 
+              childAspectRatio: 0.7, 
               crossAxisSpacing: 15,
               mainAxisSpacing: 15,
             ),
-            itemCount: productos.length,
+            itemCount: articulos.length,
             itemBuilder: (context, index) {
-              final prod = productos[index].data() as Map<String, dynamic>;
-              
-              return _buildProductCard(prod);
+              final art = articulos[index].data() as Map<String, dynamic>;
+              return _buildProductCard(art);
             },
           );
         },
@@ -60,7 +64,10 @@ class _TiendaMobileState extends State<TiendaMobile> {
     );
   }
 
-  Widget _buildProductCard(Map<String, dynamic> prod) {
+  Widget _buildProductCard(Map<String, dynamic> art) {
+    // Tomamos el nombre del archivo de la base de datos (ej: "suplemento.png")
+    final String imageFileName = art['url'] ?? art['imagen'] ?? "";
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
@@ -70,55 +77,49 @@ class _TiendaMobileState extends State<TiendaMobile> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // IMAGEN DEL PRODUCTO
+          // IMAGEN DESDE ASSETS
           Expanded(
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              child: prod['url'] != null && prod['url'].toString().isNotEmpty
-                  ? Image.network(
-                      prod['url'],
+              child: imageFileName.isNotEmpty
+                  ? Image.asset(
+                      'assets/productos/$imageFileName', // Ruta local
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      // Imagen de carga mientras descarga de internet
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return const Center(child: Icon(Icons.image, color: Colors.white10));
+                      errorBuilder: (context, error, stackTrace) {
+                        // Si el archivo no existe en la carpeta assets
+                        return Container(
+                          color: Colors.white.withOpacity(0.05),
+                          child: const Center(
+                            child: Icon(Icons.image_not_supported, color: Colors.white24, size: 40)
+                          ),
+                        );
                       },
-                      errorBuilder: (context, error, stackTrace) => 
-                        const Icon(Icons.broken_image, color: Colors.white24),
                     )
-                  : const Center(child: Icon(Icons.fitness_center, color: Colors.white10, size: 50)),
+                  : const Center(child: Icon(Icons.fitness_center, color: Colors.white10)),
             ),
           ),
 
-          // INFO DEL PRODUCTO
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  prod['nombre'] ?? "Sin nombre",
+                  art['nombre']?.toString().toUpperCase() ?? "PRODUCTO",
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 4),
                 Text(
-                  "\$${prod['precio']}",
+                  "\$${art['precio'] ?? '0.00'}",
                   style: TextStyle(color: miamiCyan, fontWeight: FontWeight.bold, fontSize: 16),
                 ),
-                const SizedBox(height: 5),
-                // STOCK
-                Row(
-                  children: [
-                    const Icon(Icons.inventory_2_outlined, size: 12, color: Colors.white38),
-                    const SizedBox(width: 4),
-                    Text(
-                      "Stock: ${prod['stock'] ?? '0'}",
-                      style: const TextStyle(color: Colors.white38, fontSize: 11),
-                    ),
-                  ],
+                const SizedBox(height: 6),
+                Text(
+                  "STOCK: ${art['stock'] ?? '0'}",
+                  style: const TextStyle(color: Colors.white30, fontSize: 10, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
