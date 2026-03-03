@@ -1,83 +1,189 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:miami_fit/screens_mobile/tienda_mobile.dart';
 
 class ClientDashboard extends StatelessWidget {
-  const ClientDashboard({super.key});
-
-  final Color miamiBlue = const Color(0xFF0A1A39);
-  final Color miamiCyan = const Color(0xFF00AEEF);
+  final Map<String, dynamic> userData;
+  const ClientDashboard({super.key, required this.userData});
 
   @override
   Widget build(BuildContext context) {
+    final Color miamiBlue = const Color(0xFF0A1A39);
+    final Color miamiCyan = const Color(0xFF00AEEF);
+
+    // Lógica de días (mantenemos la que no traba la app)
+    int diasRestantes = 0;
+    final dynamic fFinRaw = userData['fechaFin'];
+    if (fFinRaw is Timestamp) {
+      final int msFin = fFinRaw.millisecondsSinceEpoch;
+      final int msAhora = DateTime.now().millisecondsSinceEpoch;
+      diasRestantes = ((msFin - msAhora) / 86400000).ceil();
+    }
+    if (diasRestantes < 0) diasRestantes = 0;
+
+    Color statusColor = diasRestantes <= 3 ? Colors.redAccent : miamiCyan;
+
     return Scaffold(
       backgroundColor: miamiBlue,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text("MIAMI FIT", style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          const SizedBox(height: 20),
-          const Text("Hola, Carlos Perez", style: TextStyle(color: Colors.white, fontSize: 24)),
-          const SizedBox(height: 40),
-          
-          // CÍRCULO DE DÍAS RESTANTES
-          Center(
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: miamiCyan, width: 8),
-                boxShadow: [
-                  BoxShadow(color: miamiCyan.withOpacity(0.3), blurRadius: 20, spreadRadius: 5)
-                ],
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Text("Te quedan", style: TextStyle(color: Colors.white70, fontSize: 16)),
-                  Text("15", style: TextStyle(color: Colors.white, fontSize: 60, fontWeight: FontWeight.bold)),
-                  Text("DÍAS", style: TextStyle(color: Colors.white70, fontSize: 16)),
-                ],
-              ),
-            ),
+      body: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [miamiBlue, const Color(0xFF162A4E)],
           ),
-          
-          const Spacer(),
-          
-          // BOTÓN DE COMPRA (ACCESO AL CATÁLOGO)
-          Padding(
-            padding: const EdgeInsets.all(30.0),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => TiendaMobile())
-                );
-              },
-              child: Container( 
-                height: 100,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [miamiCyan, Colors.blue.shade900]),
-                  borderRadius: BorderRadius.circular(20),
-                ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Barra superior corregida
+              Padding(
+                padding: const EdgeInsets.all(20),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.shopping_cart, color: Colors.white, size: 30),
-                    SizedBox(width: 15),
-                    Text("VER TIENDA / COMPRAS", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Image.asset('assets/LOGO.jpeg', height: 40),
+                    IconButton(
+                      icon: const Icon(Icons.logout, color: Colors.white24),
+                      onPressed: () => Navigator.pop(context),
+                    )
                   ],
                 ),
               ),
-            ),
+
+              const Spacer(flex: 1),
+
+              // SECCIÓN NOMBRE CENTRADA CON PADDING
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: Column(
+                  children: [
+                    Text(
+                      "¡HOLA,",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: miamiCyan, fontSize: 14, letterSpacing: 2),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      userData['nombre'].toString().toUpperCase(),
+                      textAlign: TextAlign.center, // Centrado horizontal
+                      style: const TextStyle(
+                        color: Colors.white, 
+                        fontSize: 26, // Un poco más grande para que destaque
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        "Cédula: ${userData['cedula']}",
+                        style: const TextStyle(color: Colors.white54, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Spacer(flex: 2),
+
+              // ANILLO DE PROGRESO
+              
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 240,
+                    height: 240,
+                    child: CircularProgressIndicator(
+                      value: diasRestantes / 30,
+                      strokeWidth: 15,
+                      backgroundColor: Colors.white.withOpacity(0.05),
+                      valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                    ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "$diasRestantes",
+                        style: TextStyle(color: statusColor, fontSize: 80, fontWeight: FontWeight.bold),
+                      ),
+                      const Text(
+                        "DÍAS",
+                        style: TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 4),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              const Spacer(flex: 2),
+
+              // TARJETA DE PLAN
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 40),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(25),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildInfoTile("PLAN", userData['plan'] ?? "N/A", miamiCyan),
+                    _buildInfoTile("ESTADO", diasRestantes > 0 ? "ACTIVO" : "VENCIDO", statusColor),
+                  ],
+                ),
+              ),
+
+              const Spacer(flex: 1),
+
+              // BOTÓN TIENDA
+              Padding(
+                padding: const EdgeInsets.fromLTRB(40, 0, 40, 40),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 60,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => TiendaMobile()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: miamiCyan,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      "VER TIENDA MIAMI FIT", 
+                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
-        ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildInfoTile(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 5),
+        Text(value, style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.bold)),
+      ],
     );
   }
 }

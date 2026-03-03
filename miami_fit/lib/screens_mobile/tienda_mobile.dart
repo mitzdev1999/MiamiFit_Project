@@ -1,108 +1,129 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class TiendaMobile extends StatelessWidget {
-  TiendaMobile({super.key});
+class TiendaMobile extends StatefulWidget {
+  const TiendaMobile({super.key});
 
+  @override
+  State<TiendaMobile> createState() => _TiendaMobileState();
+}
+
+class _TiendaMobileState extends State<TiendaMobile> {
   final Color miamiBlue = const Color(0xFF0A1A39);
   final Color miamiCyan = const Color(0xFF00AEEF);
-
-  // Lista de ejemplo (Estos datos vendrán de la misma colección que la PC)
-  final List<Map<String, dynamic>> productos = [
-    {"nombre": "Proteína Whey", "precio": 45.0, "foto": "assets/LOGO.jpeg", "stock": 10},
-    {"nombre": "Creatina", "precio": 30.0, "foto": "assets/LOGO.jpeg", "stock": 5},
-    {"nombre": "Cinturón Gym", "precio": 25.0, "foto": "assets/LOGO.jpeg", "stock": 8},
-    {"nombre": "Shaker", "precio": 10.0, "foto": "assets/LOGO.jpeg", "stock": 20},
-  ];
-
-  // Función para abrir WhatsApp
-  void _comprarPorWhatsApp(String producto) async {
-    String telefono = "573001234567"; // <-- Reemplaza con el número del Gimnasio
-    String mensaje = "Hola Miami Fit! Me interesa comprar el producto: $producto. ¿Está disponible?";
-    Uri url = Uri.parse("https://wa.me/$telefono?text=${Uri.encodeComponent(mensaje)}");
-
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      print("No se pudo abrir WhatsApp");
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: miamiBlue,
       appBar: AppBar(
-        title: const Text("TIENDA MIAMI FIT", style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        title: const Text("TIENDA MIAMI FIT", 
+          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+        centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(15.0),
-        child: GridView.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2, // Dos productos por fila
-            childAspectRatio: 0.75, // Ajuste de altura de la tarjeta
-            crossAxisSpacing: 15,
-            mainAxisSpacing: 15,
-          ),
-          itemCount: productos.length,
-          itemBuilder: (context, index) {
-            final prod = productos[index];
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Imagen del Producto
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                      child: Image.asset(prod['foto'], fit: BoxFit.cover, width: double.infinity),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(10.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          prod['nombre'],
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          "\$${prod['precio']}",
-                          style: TextStyle(color: miamiCyan, fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        // Botón de Compra
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () => _comprarPorWhatsApp(prod['nombre']),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: miamiCyan,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 5),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                            child: const Text("COMPRAR", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+      body: StreamBuilder<QuerySnapshot>(
+        // Escuchamos la colección 'productos' (asegúrate de que se llame así en tu PC)
+        stream: FirebaseFirestore.instance.collection('productos').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(
+              child: Text("No hay productos disponibles aún", 
+                style: TextStyle(color: Colors.white54)),
             );
-          },
-        ),
+          }
+
+          final productos = snapshot.data!.docs;
+
+          return GridView.builder(
+            padding: const EdgeInsets.all(20),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2, // Dos columnas
+              childAspectRatio: 0.75, // Proporción de la tarjeta
+              crossAxisSpacing: 15,
+              mainAxisSpacing: 15,
+            ),
+            itemCount: productos.length,
+            itemBuilder: (context, index) {
+              final prod = productos[index].data() as Map<String, dynamic>;
+              
+              return _buildProductCard(prod);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildProductCard(Map<String, dynamic> prod) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // IMAGEN DEL PRODUCTO
+          Expanded(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              child: prod['url'] != null && prod['url'].toString().isNotEmpty
+                  ? Image.network(
+                      prod['url'],
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      // Imagen de carga mientras descarga de internet
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(child: Icon(Icons.image, color: Colors.white10));
+                      },
+                      errorBuilder: (context, error, stackTrace) => 
+                        const Icon(Icons.broken_image, color: Colors.white24),
+                    )
+                  : const Center(child: Icon(Icons.fitness_center, color: Colors.white10, size: 50)),
+            ),
+          ),
+
+          // INFO DEL PRODUCTO
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  prod['nombre'] ?? "Sin nombre",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  "\$${prod['precio']}",
+                  style: TextStyle(color: miamiCyan, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 5),
+                // STOCK
+                Row(
+                  children: [
+                    const Icon(Icons.inventory_2_outlined, size: 12, color: Colors.white38),
+                    const SizedBox(width: 4),
+                    Text(
+                      "Stock: ${prod['stock'] ?? '0'}",
+                      style: const TextStyle(color: Colors.white38, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
