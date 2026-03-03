@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // <--- ESTA IMPORTACIÓN ES VITAL
 
 class ViewArticulos extends StatefulWidget {
   const ViewArticulos({super.key});
@@ -11,18 +12,13 @@ class _ViewArticulosState extends State<ViewArticulos> {
   final Color miamiBlue = const Color(0xFF0A1A39);
   final Color miamiCyan = const Color(0xFF00AEEF);
 
-  // Lista temporal de productos
-  List<Map<String, dynamic>> productos = [
-    {"nombre": "Proteína Whey", "precio": 45.00, "cantidad": 10, "foto": "assets/LOGO.jpeg"},
-    {"nombre": "Creatina", "precio": 30.00, "cantidad": 5, "foto": "assets/LOGO.jpeg"},
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: miamiBlue,
       body: Stack(
         children: [
+          // LOGO DE FONDO
           Center(
             child: Opacity(
               opacity: 0.1,
@@ -43,63 +39,78 @@ class _ViewArticulosState extends State<ViewArticulos> {
                       onPressed: _showAddProductDialog,
                       icon: const Icon(Icons.add),
                       label: const Text("AGREGAR PRODUCTO"),
-                      style: ElevatedButton.styleFrom(backgroundColor: miamiCyan, foregroundColor: Colors.white),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: miamiCyan, 
+                        foregroundColor: Colors.white
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 30),
+                
+                // --- LISTA EN TIEMPO REAL DESDE FIREBASE ---
                 Expanded(
-                  child: ListView.builder(
-                    itemCount: productos.length,
-                    itemBuilder: (context, index) {
-                      final item = productos[index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 15),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(color: Colors.white10),
-                        ),
-                        child: Row(
-                          children: [
-                            // Foto del producto
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.asset(item['foto'], width: 60, height: 60, fit: BoxFit.cover),
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance.collection('articulos').snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) return const Center(child: Text("Error al cargar datos", style: TextStyle(color: Colors.red)));
+                      if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+
+                      final docs = snapshot.data!.docs;
+
+                      return ListView.builder(
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final item = docs[index].data() as Map<String, dynamic>;
+                          final docId = docs[index].id;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 15),
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(15),
+                              border: Border.all(color: Colors.white10),
                             ),
-                            const SizedBox(width: 20),
-                            // Información
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(item['nombre'], style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                                  Text("\$${item['precio']}", style: TextStyle(color: miamiCyan, fontSize: 16)),
-                                ],
-                              ),
-                            ),
-                            // Control de stock
-                            Row(
+                            child: Row(
                               children: [
-                                const Text("Stock: ", style: TextStyle(color: Colors.white70)),
-                                IconButton(
-                                  icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                                  onPressed: () {
-                                    setState(() {
-                                      if (item['cantidad'] > 0) item['cantidad']--;
-                                    });
-                                  },
+                                // Foto desde URL
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.network(
+                                    item['fotoUrl'] ?? '', 
+                                    width: 60, height: 60, fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => Icon(Icons.broken_image, color: miamiCyan),
+                                  ),
                                 ),
-                                Text("${item['cantidad']}", style: const TextStyle(color: Colors.white, fontSize: 18)),
-                                IconButton(
-                                  icon: const Icon(Icons.add_circle_outline, color: Colors.greenAccent),
-                                  onPressed: () => setState(() => item['cantidad']++),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(item['nombre'], style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                                      Text("\$${item['precio']}", style: TextStyle(color: miamiCyan, fontSize: 16)),
+                                    ],
+                                  ),
+                                ),
+                                // Control de Stock
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                                      onPressed: () => _updateStock(docId, item['cantidad'] - 1),
+                                    ),
+                                    Text("${item['cantidad']}", style: const TextStyle(color: Colors.white, fontSize: 18)),
+                                    IconButton(
+                                      icon: const Icon(Icons.add_circle_outline, color: Colors.greenAccent),
+                                      onPressed: () => _updateStock(docId, item['cantidad'] + 1),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       );
                     },
                   ),
@@ -112,83 +123,71 @@ class _ViewArticulosState extends State<ViewArticulos> {
     );
   }
 
+  // --- FUNCIÓN PARA ACTUALIZAR STOCK EN FIREBASE ---
+  void _updateStock(String id, int nuevoValor) {
+    if (nuevoValor >= 0) {
+      FirebaseFirestore.instance.collection('articulos').doc(id).update({'cantidad': nuevoValor});
+    }
+  }
 
+  // --- DIÁLOGO PARA AGREGAR PRODUCTO CON URL ---
   void _showAddProductDialog() {
-  final TextEditingController nameCtrl = TextEditingController();
-  final TextEditingController priceCtrl = TextEditingController();
-  final TextEditingController stockCtrl = TextEditingController();
-  final TextEditingController photoCtrl = TextEditingController(); // Temporalmente como texto
+    final TextEditingController nameCtrl = TextEditingController();
+    final TextEditingController priceCtrl = TextEditingController();
+    final TextEditingController stockCtrl = TextEditingController();
+    final TextEditingController urlCtrl = TextEditingController();
 
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      backgroundColor: miamiBlue,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: Colors.white10)),
-      title: Text("NUEVO ARTÍCULO", style: TextStyle(color: miamiCyan, fontWeight: FontWeight.bold)),
-      content: SingleChildScrollView(
-        child: Column(
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: miamiBlue,
+        title: Text("NUEVO PRODUCTO", style: TextStyle(color: miamiCyan)),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildDialogField(nameCtrl, "Nombre del producto", Icons.shopping_bag),
-            const SizedBox(height: 15),
-            _buildDialogField(priceCtrl, "Precio (Ej: 45.00)", Icons.attach_money, isNumber: true),
-            const SizedBox(height: 15),
-            _buildDialogField(stockCtrl, "Cantidad inicial", Icons.inventory_2, isNumber: true),
-            const SizedBox(height: 15),
-            _buildDialogField(photoCtrl, "Nombre del archivo de imagen (ej: protein.jpg)", Icons.image),
+            _buildDialogField(nameCtrl, "Nombre", Icons.shopping_bag),
             const SizedBox(height: 10),
-            const Text(
-              "Nota: Por ahora, asegúrate de que la imagen esté en tu carpeta assets.",
-              style: TextStyle(color: Colors.white38, fontSize: 11),
-            ),
+            _buildDialogField(priceCtrl, "Precio", Icons.attach_money, isNumber: true),
+            const SizedBox(height: 10),
+            _buildDialogField(stockCtrl, "Stock Inicial", Icons.inventory, isNumber: true),
+            const SizedBox(height: 10),
+            _buildDialogField(urlCtrl, "URL de la foto (.jpg o .png)", Icons.link),
           ],
         ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("CANCELAR", style: TextStyle(color: Colors.white54)),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: miamiCyan,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-          onPressed: () {
-            if (nameCtrl.text.isNotEmpty && priceCtrl.text.isNotEmpty) {
-              setState(() {
-                productos.add({
-                  "nombre": nameCtrl.text,
-                  "precio": double.parse(priceCtrl.text),
-                  "cantidad": int.parse(stockCtrl.text),
-                  "foto": "assets/LOGO.jpeg", // Usamos el logo por defecto si no hay ruta
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCELAR")),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameCtrl.text.isNotEmpty) {
+                await FirebaseFirestore.instance.collection('articulos').add({
+                  'nombre': nameCtrl.text,
+                  'precio': double.tryParse(priceCtrl.text) ?? 0.0,
+                  'cantidad': int.tryParse(stockCtrl.text) ?? 0,
+                  'fotoUrl': urlCtrl.text,
                 });
-              });
-              Navigator.pop(context);
-            }
-          },
-          child: const Text("GUARDAR PRODUCTO", style: TextStyle(color: Colors.white)),
-        ),
-      ],
-    ),
-  );
-}
+                Navigator.pop(context);
+              }
+            },
+            child: const Text("GUARDAR"),
+          )
+        ],
+      ),
+    );
+  }
 
-// Widget auxiliar para los campos del diálogo
-Widget _buildDialogField(TextEditingController ctrl, String hint, IconData icon, {bool isNumber = false}) {
-  return TextField(
-    controller: ctrl,
-    keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-    style: const TextStyle(color: Colors.white),
-    decoration: InputDecoration(
-      prefixIcon: Icon(icon, color: miamiCyan, size: 20),
-      hintText: hint,
-      hintStyle: const TextStyle(color: Colors.white24, fontSize: 14),
-      filled: true,
-      fillColor: Colors.white.withOpacity(0.05),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: miamiCyan)),
-    ),
-  );
-}
+  Widget _buildDialogField(TextEditingController ctrl, String hint, IconData icon, {bool isNumber = false}) {
+    return TextField(
+      controller: ctrl,
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: miamiCyan),
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.white24),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
 }

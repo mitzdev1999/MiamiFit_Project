@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "482449597040",
+    "project_id": "miami-fit-app",
+    "storage_bucket": "miami-fit-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:482449597040:android:55ab504f4e7f14a33f8ab5",
+        "android_client_info": {
+          "package_name": "com.example.miami_fit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCN2KLXyH3Ncj8dyjIaSokzpNUhnnI0bd0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

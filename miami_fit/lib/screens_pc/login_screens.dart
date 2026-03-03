@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:miami_fit/screens_pc/admin_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -9,93 +10,101 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Definimos el color exacto del logo para que no se vea el "cuadro"
-  final Color miamiFitBg = const Color(0xFF0A192F); 
-  final Color miamiFitCyan = const Color(0xFF00AEEF);
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  void _loginAdmin() async {
+    setState(() => _isLoading = true);
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminDashboard()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Credenciales incorrectas")),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A1A39), // <--- Aplicamos el color exacto aquí
+      backgroundColor: const Color(0xFF0A1A39),
       body: Center(
-        child: Container(
-          width: 450, // Un poco más ancho para que respire mejor
-          padding: const EdgeInsets.all(40),
+        child: SizedBox(
+          width: 350,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // --- TU LOGO ---
-              // Usamos BoxFit.contain para asegurar que se vea bien
-              Image.asset(
-                'assets/LOGO.jpeg', 
-                height: 200,
-                fit: BoxFit.contain,
+              Image.asset('assets/LOGO.jpeg', height: 150),
+              const SizedBox(height: 50),
+              
+              // CAMPO USUARIO REDONDEADO
+              TextField(
+                controller: _emailController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: "Usuario",
+                  hintStyle: const TextStyle(color: Colors.white24),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.05),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30), // Redondeado
+                    borderSide: BorderSide.none,
+                  ),
+                ),
               ),
-              const SizedBox(height: 50),
+              const SizedBox(height: 15),
               
-              // --- CAMPO USUARIO ---
-              _buildTextField("Usuario o Correo", Icons.person),
-              const SizedBox(height: 25),
+              // CAMPO CONTRASEÑA REDONDEADO
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: "Contraseña",
+                  hintStyle: const TextStyle(color: Colors.white24),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.05),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30), // Redondeado
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
               
-              // --- CAMPO CONTRASEÑA ---
-              _buildTextField("Contraseña", Icons.lock, isPassword: true),
-              const SizedBox(height: 50),
-              
-              // --- BOTÓN INGRESAR ---
               SizedBox(
                 width: double.infinity,
-                height: 55,
+                height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context, 
-                      MaterialPageRoute(builder: (context) => const AdminDashboard())
-                    );
-                    
-                  },
+                  onPressed: _isLoading ? null : _loginAdmin,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: miamiFitCyan,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30), // Bordes redondeados como tu imagen
-                    ),
+                    backgroundColor: const Color(0xFF00AEEF),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
-                  child: const Text(
-                    "INGRESAR", 
-                    style: TextStyle(
-                      fontSize: 16, 
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    )
-                  ),
+                  child: _isLoading 
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text("INICIAR SESIÓN", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(String hint, IconData icon, {bool isPassword = false}) {
-    return TextField(
-      obscureText: isPassword,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: miamiFitCyan, size: 22),
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white54),
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.05), // Fondo sutil para los inputs
-        contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.white24),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: miamiFitCyan),
         ),
       ),
     );
