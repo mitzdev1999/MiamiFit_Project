@@ -12,7 +12,6 @@ class _ViewArticulosState extends State<ViewArticulos> {
   final Color miamiBlue = const Color(0xFF0A1A39);
   final Color miamiCyan = const Color(0xFF00AEEF);
 
-  // Controladores para agregar nuevo producto
   final TextEditingController _nombreCtrl = TextEditingController();
   final TextEditingController _precioCtrl = TextEditingController();
   final TextEditingController _stockCtrl = TextEditingController();
@@ -25,17 +24,15 @@ class _ViewArticulosState extends State<ViewArticulos> {
       body: Padding(
         padding: const EdgeInsets.all(40.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("INVENTARIO DE ARTÍCULOS",
-                    style: TextStyle(color: miamiCyan, fontSize: 24, fontWeight: FontWeight.bold)),
+                Text("INVENTARIO MIAMI FIT", style: TextStyle(color: miamiCyan, fontSize: 24, fontWeight: FontWeight.bold)),
                 ElevatedButton.icon(
                   onPressed: _showAddDialog,
                   icon: const Icon(Icons.add),
-                  label: const Text("NUEVO ARTÍCULO"),
+                  label: const Text("AGREGAR PRODUCTO"),
                   style: ElevatedButton.styleFrom(backgroundColor: miamiCyan, foregroundColor: Colors.white),
                 ),
               ],
@@ -46,21 +43,18 @@ class _ViewArticulosState extends State<ViewArticulos> {
                 stream: FirebaseFirestore.instance.collection('articulos').snapshots(),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                  
                   final docs = snapshot.data!.docs;
-
                   return GridView.builder(
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4, // 4 columnas en PC
-                      childAspectRatio: 0.8,
+                      crossAxisCount: 5, 
+                      childAspectRatio: 0.4, // <--- MÁS VERTICAL
                       crossAxisSpacing: 20,
                       mainAxisSpacing: 20,
                     ),
                     itemCount: docs.length,
                     itemBuilder: (context, index) {
                       final data = docs[index].data() as Map<String, dynamic>;
-                      final id = docs[index].id;
-                      return _buildProductCard(data, id);
+                      return _buildProductCard(data, docs[index].id);
                     },
                   );
                 },
@@ -73,8 +67,8 @@ class _ViewArticulosState extends State<ViewArticulos> {
   }
 
   Widget _buildProductCard(Map<String, dynamic> data, String id) {
-    // IMPORTANTE: Aquí es donde corregimos para que lea de ASSETS
     final String fileName = data['url'] ?? "";
+    int stock = data['stock'] ?? 0;
 
     return Container(
       decoration: BoxDecoration(
@@ -87,32 +81,40 @@ class _ViewArticulosState extends State<ViewArticulos> {
           Expanded(
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-              child: fileName.isNotEmpty
-                  ? Image.asset(
-                      'assets/productos/$fileName',
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      errorBuilder: (context, error, stackTrace) => 
-                        const Center(child: Icon(Icons.broken_image, color: Colors.white24, size: 50)),
-                    )
-                  : const Icon(Icons.image, color: Colors.white10, size: 50),
+              child: Image.asset(
+                'assets/productos/$fileName',
+                fit: BoxFit.cover,
+                width: double.infinity,
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.image, color: Colors.white10, size: 50),
+              ),
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: Column(
               children: [
-                Text(data['nombre'] ?? "", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                Text("\$${data['precio']}", style: TextStyle(color: miamiCyan)),
-                const SizedBox(height: 10),
+                Text(data['nombre'] ?? "", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), maxLines: 1),
+                Text("\$${data['precio']}", style: TextStyle(color: miamiCyan, fontSize: 16)),
+                const SizedBox(height: 12),
+                // CONTROL DE STOCK
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                      onPressed: () => FirebaseFirestore.instance.collection('articulos').doc(id).delete(),
+                    _btnStock(Icons.remove, () {
+                      if (stock > 0) FirebaseFirestore.instance.collection('articulos').doc(id).update({'stock': stock - 1});
+                    }),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text("$stock", style: const TextStyle(color: Colors.white, fontSize: 16)),
                     ),
+                    _btnStock(Icons.add, () {
+                      FirebaseFirestore.instance.collection('articulos').doc(id).update({'stock': stock + 1});
+                    }),
                   ],
+                ),
+                IconButton(
+                  onPressed: () => FirebaseFirestore.instance.collection('articulos').doc(id).delete(),
+                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
                 )
               ],
             ),
@@ -122,24 +124,30 @@ class _ViewArticulosState extends State<ViewArticulos> {
     );
   }
 
+  Widget _btnStock(IconData icon, VoidCallback tap) {
+    return InkWell(
+      onTap: tap,
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(color: miamiCyan.withOpacity(0.1), borderRadius: BorderRadius.circular(5)),
+        child: Icon(icon, color: miamiCyan, size: 16),
+      ),
+    );
+  }
+
   void _showAddDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF0E2246),
-        title: const Text("AGREGAR PRODUCTO", style: TextStyle(color: Colors.white)),
+        title: const Text("NUEVO PRODUCTO", style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildTextField(_nombreCtrl, "Nombre del producto"),
-            _buildTextField(_precioCtrl, "Precio (ej: 25.00)"),
-            _buildTextField(_stockCtrl, "Stock inicial"),
-            _buildTextField(_imgCtrl, "Nombre del archivo (ej: gorra_blanca.jpeg)"),
-            const SizedBox(height: 10),
-            const Text(
-              "Nota: El archivo debe estar en assets/productos/",
-              style: TextStyle(color: Colors.white38, fontSize: 10),
-            ),
+            _in(_nombreCtrl, "Nombre"),
+            _in(_precioCtrl, "Precio"),
+            _in(_stockCtrl, "Stock Inicial"),
+            _in(_imgCtrl, "Nombre archivo (ej: gorra.jpeg)"),
           ],
         ),
         actions: [
@@ -150,32 +158,19 @@ class _ViewArticulosState extends State<ViewArticulos> {
                 'nombre': _nombreCtrl.text,
                 'precio': _precioCtrl.text,
                 'stock': int.tryParse(_stockCtrl.text) ?? 0,
-                'url': _imgCtrl.text, // Aquí guardamos el nombre del archivo
+                'url': _imgCtrl.text,
               });
-              _nombreCtrl.clear(); _precioCtrl.clear(); _stockCtrl.clear(); _imgCtrl.clear();
               Navigator.pop(context);
-            },
-            child: const Text("GUARDAR"),
-          )
+            }, 
+            child: const Text("GUARDAR")
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTextField(TextEditingController ctrl, String hint) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: TextField(
-        controller: ctrl,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white24),
-          filled: true,
-          fillColor: Colors.white.withOpacity(0.05),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      ),
-    );
-  }
+  Widget _in(TextEditingController c, String h) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: TextField(controller: c, style: const TextStyle(color: Colors.white), decoration: InputDecoration(hintText: h, hintStyle: const TextStyle(color: Colors.white24))),
+  );
 }

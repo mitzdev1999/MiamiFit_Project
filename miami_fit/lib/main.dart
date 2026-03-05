@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; // Este archivo se crea al ejecutar 'flutterfire configure'
-import 'package:flutter/foundation.dart'; // Para kIsWeb
+import 'firebase_options.dart'; 
+import 'package:flutter/foundation.dart'; 
 
 // Importaciones de tus pantallas
 import 'package:miami_fit/screens_mobile/login_mobile.dart';
 import 'package:miami_fit/screens_pc/login_screens.dart';
 
 void main() async {
-  // Aseguramos que Flutter esté listo antes de iniciar Firebase
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializamos Firebase con las opciones generadas
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -34,25 +32,28 @@ class MiamiFitApp extends StatelessWidget {
       theme: ThemeData(
         brightness: Brightness.dark,
         primaryColor: const Color(0xFF00AEEF),
-        scaffoldBackgroundColor: const Color(0xFF0A1A39), // Color oficial Miami Fit
+        scaffoldBackgroundColor: const Color(0xFF0A1A39), 
       ),
-      // Lógica para decidir qué login mostrar
       home: const PlatformViewSelector(),
     );
   }
 }
 
-// Este pequeño widget decide si mostrar la versión móvil o PC
 class PlatformViewSelector extends StatelessWidget {
   const PlatformViewSelector({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Si estamos en Web o si el ancho de pantalla es mayor a 900px (PC)
+    // Comentamos la validación de plataforma para forzar la vista móvil en la Web
+    /*
     if (kIsWeb || MediaQuery.of(context).size.width > 900) {
       return const LoginScreen(); // Pantalla Admin
     } else {
       return const LoginMobile(); // Pantalla Público
     }
+    */
+
+    // Enlace directo a la versión móvil (clientes) para el despliegue Web
+    return const LoginMobile(); 
   }
 }
